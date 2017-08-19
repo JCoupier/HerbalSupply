@@ -85,7 +85,30 @@
     <!-- Infos for the dummy plant data -->
     <string name="dummy_plant_name">Dummy plant</string>
     <string name="dummy_plant_picture_uri">android.resource://com.example.android.herbalsupply/drawable/plant_placeholder</string>
+    <string name="dummy_plant_density">0.90</string>
     <string name="dummy_plant_price">9.99</string>
-    <string name="dummy_plant_supplier_info">Some Shop</string>
-    <string name="dummy_plant_supplier_mail">someshop@dummy.com</string>
+    <string name="dummy_website_url">www.aromazone.com</string>
+    <string name="density">Density</string>
+    <string name="name">Name</string>
+    <string name="hint_density">Density</string>
+    <string name="unit_g">g</string>
+    <string name="unit_ml">mL</string>
+    <string name="quantity">Quantity</string>
+    <string name="hint_quantity">Quantity</string>
+    <string name="hint_aromazone_url">www.aromazone.com</string>
+    <string name="aromazone">Fiche produit</string>
+    <string name="calculate">Calculate</string>
+    <string name="website">Website</string>
+    <string name="reset">Reset</string>
+    <string name="category_hydrolats">Hydro</string>
+    <string name="category_huile_vegetales">HV</string>
+    <string name="category_huile_essentielles">HE</string>
+    <string name="category_extraits">Extraits</string>
+    <string name="category_poudre">Poudres</string>
+    <string name="category_actif">Actifs</string>
+    <string name="category_divers">Divers</string>
+    <string name="category_contenants">Conten</string>
+    <string name="total">Total :</string>
+    <string name="quantity_total">Quantity Total :</string>
+    <string name="quantity_dispo">Quantity Dispo :</string>
 </resources>

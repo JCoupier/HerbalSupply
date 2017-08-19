@@ -9,7 +9,9 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="@dimen/activity_margin">
+        android:layout_margin="@dimen/activity_margin"
+        android:focusable="true"
+        android:focusableInTouchMode="true">
 
         <LinearLayout
             android:id="@+id/picture_container"
@@ -35,8 +37,9 @@
                     android:id="@+id/take_picture_button"
                     style="@style/EditorButtonStyle"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_margin="@dimen/activity_margin"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:layout_margin="@dimen/activity_padding"
                     android:padding="@dimen/activity_padding"
                     android:text="@string/take_picture" />
 
@@ -44,10 +47,11 @@
                     android:id="@+id/choose_picture_button"
                     style="@style/EditorButtonStyle"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="@dimen/activity_margin"
-                    android:layout_marginLeft="@dimen/activity_margin"
-                    android:layout_marginRight="@dimen/activity_margin"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginBottom="@dimen/activity_padding"
+                    android:layout_marginLeft="@dimen/activity_padding"
+                    android:layout_marginRight="@dimen/activity_padding"
                     android:padding="@dimen/activity_padding"
                     android:text="@string/choose_picture" />
 
@@ -66,35 +70,40 @@
 
             <LinearLayout
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
                 <TextView
                     style="@style/CategoryStyle"
                     android:layout_height="wrap_content"
-                    android:text="@string/plant_name" />
+                    android:text="@string/name" />
 
                 <TextView
+                    android:id="@+id/density_text"
                     style="@style/CategoryStyle"
                     android:layout_height="wrap_content"
-                    android:text="@string/plant_price" />
+                    android:text="@string/density" />
 
                 <TextView
+                    android:id="@+id/quantity_text"
                     style="@style/CategoryStyle"
                     android:layout_height="wrap_content"
-                    android:text="@string/supplier_info" />
+                    android:text="@string/quantity" />
 
                 <TextView
+                    android:id="@+id/textView"
                     style="@style/CategoryStyle"
                     android:layout_height="wrap_content"
-                    android:text="@string/supplier_mail" />
+                    android:layout_marginTop="94dp"
+                    android:text="@string/aromazone" />
 
             </LinearLayout>
 
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/activity_margin"
                 android:layout_weight="2"
                 android:orientation="vertical">
 
@@ -104,106 +113,203 @@
                     android:hint="@string/hint_name"
                     android:inputType="textCapWords" />
 
-                <RelativeLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content">
+                <EditText
+                    android:id="@+id/edit_density"
+                    style="@style/EditorFieldStyle"
+                    android:hint="@string/density"
+                    android:inputType="numberDecimal" />
+
+                <LinearLayout
+                    android:id="@+id/layout_quantity_g_ml"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <EditText
+                        android:id="@+id/edit_plant_quantity_gram"
+                        style="@style/EditorFieldStyle"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:hint="@string/hint_quantity"
+                        android:inputType="numberDecimal" />
 
                     <TextView
-                        android:id="@+id/currency"
+                        android:id="@+id/unit_g"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_alignParentEnd="true"
-                        android:layout_alignParentRight="true"
                         android:paddingEnd="@dimen/activity_padding"
                         android:paddingRight="@dimen/activity_padding"
                         android:paddingStart="@dimen/activity_padding"
                         android:paddingTop="@dimen/activity_padding"
-                        android:text="@string/currency"
+                        android:text="@string/unit_g"
                         android:textAppearance="?android:textAppearanceMedium" />
 
                     <EditText
-                        android:id="@+id/edit_plant_price"
+                        android:id="@+id/edit_plant_quantity_ml"
                         style="@style/EditorFieldStyle"
-                        android:layout_toLeftOf="@id/currency"
-                        android:layout_toStartOf="@id/currency"
-                        android:hint="@string/hint_price"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:hint="@string/hint_quantity"
                         android:inputType="numberDecimal" />
 
-                </RelativeLayout>
+                    <TextView
+                        android:id="@+id/unit_ml"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingEnd="@dimen/activity_padding"
+                        android:paddingRight="@dimen/activity_padding"
+                        android:paddingStart="@dimen/activity_padding"
+                        android:paddingTop="@dimen/activity_padding"
+                        android:text="@string/unit_ml"
+                        android:textAppearance="?android:textAppearanceMedium" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/layout_calculate_reset"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/calculate_button"
+                        style="@style/EditorButtonStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_gravity="center"
+                        android:layout_margin="@dimen/activity_padding"
+                        android:padding="@dimen/activity_padding"
+                        android:text="@string/calculate" />
+
+                    <Button
+                        android:id="@+id/reset_button"
+                        style="@style/EditorButtonStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_gravity="center"
+                        android:layout_margin="@dimen/activity_padding"
+                        android:padding="@dimen/activity_padding"
+                        android:text="@string/reset" />
+
+                </LinearLayout>
 
                 <EditText
-                    android:id="@+id/edit_supplier_info"
+                    android:id="@+id/edit_aromazone_url"
                     style="@style/EditorFieldStyle"
-                    android:hint="@string/hint_supplier_info"
-                    android:inputType="textCapWords" />
+                    android:layout_marginTop="20dp"
+                    android:hint="@string/hint_aromazone_url"
+                    android:inputType="textUri" />
 
-                <EditText
-                    android:id="@+id/edit_supplier_mail"
-                    style="@style/EditorFieldStyle"
-                    android:hint="@string/hint_supplier_mail"
-                    android:inputType="textEmailAddress" />
+                <Button
+                    android:id="@+id/website_button"
+                    style="@style/EditorButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_margin="@dimen/activity_margin"
+                    android:padding="@dimen/activity_padding"
+                    android:text="@string/website" />
 
             </LinearLayout>
 
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/quantity_stock_text"
-            style="@style/CategoryStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/edit_overview"
-            android:layout_centerInParent="true"
-            android:text="@string/quantity_in_stock" />
-
         <LinearLayout
-            android:id="@+id/edit_quantity_picker"
-            android:layout_width="wrap_content"
+            android:id="@+id/layout_quantity_total_dispo"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_below="@id/quantity_stock_text"
-            android:layout_centerHorizontal="true"
-            android:layout_marginBottom="@dimen/activity_margin"
-            android:layout_marginTop="@dimen/activity_margin"
-            android:orientation="horizontal">
-
-            <Button
-                android:id="@+id/button_minus"
-                style="@style/EditorButtonStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/minus"
-                android:textSize="@dimen/editor_quantity_text_size" />
+            android:layout_marginTop="208dp"
+            android:orientation="vertical">
 
             <TextView
-                android:id="@+id/edit_quantity_text_view"
+                android:id="@+id/quantity_total"
+                style="@style/CategoryStyle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingLeft="@dimen/edit_quantity_padding"
-                android:paddingRight="@dimen/edit_quantity_padding"
-                android:textAlignment="center"
-                android:textSize="@dimen/editor_quantity_text_size"
-                tools:text="0" />
+                android:layout_gravity="center"
+                android:text="@string/quantity_total" />
 
-            <Button
-                android:id="@+id/button_plus"
-                style="@style/EditorButtonStyle"
+            <LinearLayout
+                android:id="@+id/edit_quantity_total_picker"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/plus"
-                android:textSize="@dimen/editor_quantity_text_size" />
+                android:layout_gravity="center"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/total_button_minus"
+                    style="@style/EditorButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/minus"
+                    android:textSize="@dimen/editor_quantity_text_size" />
+
+                <TextView
+                    android:id="@+id/edit_quantity_total_text_view"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingLeft="@dimen/edit_quantity_padding"
+                    android:paddingRight="@dimen/edit_quantity_padding"
+                    android:textAlignment="center"
+                    android:textSize="@dimen/editor_quantity_text_size"
+                    tools:text="0" />
+
+                <Button
+                    android:id="@+id/total_button_plus"
+                    style="@style/EditorButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/plus"
+                    android:textSize="@dimen/editor_quantity_text_size" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/quantity_dispo"
+                style="@style/CategoryStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/quantity_dispo" />
+
+            <LinearLayout
+                android:id="@+id/edit_quantity_dispo_picker"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/dispo_button_minus"
+                    style="@style/EditorButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/minus"
+                    android:textSize="@dimen/editor_quantity_text_size" />
+
+                <TextView
+                    android:id="@+id/edit_quantity_dispo_text_view"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingLeft="@dimen/edit_quantity_padding"
+                    android:paddingRight="@dimen/edit_quantity_padding"
+                    android:textAlignment="center"
+                    android:textSize="@dimen/editor_quantity_text_size"
+                    tools:text="0" />
+
+                <Button
+                    android:id="@+id/dispo_button_plus"
+                    style="@style/EditorButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/plus"
+                    android:textSize="@dimen/editor_quantity_text_size" />
+
+            </LinearLayout>
 
         </LinearLayout>
-
-        <Button
-            android:id="@+id/order_button"
-            style="@style/EditorButtonStyle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/edit_quantity_picker"
-            android:layout_centerInParent="true"
-            android:layout_marginBottom="@dimen/activity_margin"
-            android:layout_marginTop="@dimen/activity_margin"
-            android:text="@string/order" />
 
     </RelativeLayout>
 

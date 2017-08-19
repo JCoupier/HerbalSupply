@@ -14,7 +14,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.support.v4.app.NavUtils;
 import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
@@ -28,7 +27,14 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.android.herbalsupply.data.HerbContract.PlantEntry;
+import com.example.android.herbalsupply.data.HerbContract.HydrolatEntry;
+import com.example.android.herbalsupply.data.HerbContract.HvEntry;
+import com.example.android.herbalsupply.data.HerbContract.HeEntry;
+import com.example.android.herbalsupply.data.HerbContract.ExtrEntry;
+import com.example.android.herbalsupply.data.HerbContract.PoudrEntry;
+import com.example.android.herbalsupply.data.HerbContract.ActifEntry;
+import com.example.android.herbalsupply.data.HerbContract.DiversEntry;
+import com.example.android.herbalsupply.data.HerbContract.ContenEntry;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,6 +54,9 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
     /** Content URI for the existing plant (null if it's a new plant) */
     private Uri mCurrentPlantUri;
 
+    // The table we are in
+    private int mTableType;
+
     // EditText field to enter the plant's name
     private EditText mNameEditText;
 
@@ -66,29 +75,50 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
     // Id for the take a picture Intent
     private static final int REQUEST_TAKE_PICTURE = 1;
 
-    // EditTextView field to enter the plant's price
-    private EditText mPriceEditText;
+    // EditTextView field for the density
+    private EditText mDensityEditText;
 
-    // EditTextView field to enter the plant's supplier info
-    private EditText mSupplierInfoEditText;
+    // EditTextView to display the quantity in g
+    private EditText mQuantityGramEditText;
+
+    // EditTextView to display the quantity in mL
+    private EditText mQuantityMlEditText;
+
+    // EditTextView to display the quantity total
+    private TextView mQuantityTotalTextView;
+
+    // EditTextView to display the quantity dispo
+    private TextView mQuantityDispoTextView;
+
+    // Quantity total global variable
+    private int mQuantityTotal = 0;
+
+    // Quantity dispo global variable
+    private int mQuantityDispo = 0;
+
+    // Plus total button to increment the quantity
+    private Button mTotalPlusButton;
+
+    // Minus total button to decrement the quantity
+    private Button mTotalMinusButton;
+
+    // Plus dispo button to increment the quantity
+    private Button mDispoPlusButton;
+
+    // Minus dispo button to decrement the quantity
+    private Button mDispoMinusButton;
 
     // EditTextView field to enter the plant's supplier mail
-    private EditText mSupplierMailEditText;
+    private EditText mAromazoneUrlEditText;
 
-    // TextView to display the quantity
-    private TextView mQuantityTextView;
+    // Calculate button to the conversion of quantity with density
+    private Button mCalculateButton;
 
-    // Quantity global variable
-    private int mQuantity = 0;
+    // Reset button to reset the two quantity EditText
+    private Button mResetButton;
 
-    // Plus button to increment the quantity
-    private Button mPlusButton;
-
-    // Minus button to decrement the quantity
-    private Button mMinusButton;
-
-    // Order button to send an email to the supplier mail
-    private Button mOrderButton;
+    // Website button to go to the website of the url provide
+    private Button mWebsiteButton;
 
     // Path for the picture taken with the camera
     private String mCurrentPhotoPath;
@@ -140,35 +170,74 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
             }
         });
 
-        mPriceEditText = (EditText) findViewById(R.id.edit_plant_price);
-        mSupplierInfoEditText = (EditText) findViewById(R.id.edit_supplier_info);
-        mSupplierMailEditText = (EditText) findViewById(R.id.edit_supplier_mail);
-        mQuantityTextView = (TextView) findViewById(R.id.edit_quantity_text_view);
+        mDensityEditText = (EditText) findViewById(R.id.edit_density);
+        mQuantityGramEditText = (EditText) findViewById(R.id.edit_plant_quantity_gram);
+        mQuantityMlEditText = (EditText) findViewById(R.id.edit_plant_quantity_ml);
 
-        // Find the plus button and setup the listener
-        mPlusButton = (Button) findViewById(R.id.button_plus);
-        mPlusButton.setOnClickListener(new View.OnClickListener() {
+        mCalculateButton = (Button) findViewById(R.id.calculate_button);
+        mCalculateButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
-                plusButtonClicked();
+            public void onClick(View v) {
+                calculateWithDensity();
+                mPlantHasChanged = true;
             }
         });
 
-        // Find the minus button and setup the listener
-        mMinusButton = (Button) findViewById(R.id.button_minus);
-        mMinusButton.setOnClickListener(new View.OnClickListener() {
+        mResetButton = (Button) findViewById(R.id.reset_button);
+        mResetButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
-                minusButtonClicked();
+            public void onClick(View v) {
+                resetQuantityEditTexts();
+                mPlantHasChanged = true;
             }
         });
 
-        // Find the order button and setup the listener
-        mOrderButton = (Button) findViewById(R.id.order_button);
-        mOrderButton.setOnClickListener(new View.OnClickListener() {
+        mQuantityTotalTextView = (TextView) findViewById(R.id.edit_quantity_total_text_view);
+        mQuantityDispoTextView = (TextView) findViewById(R.id.edit_quantity_dispo_text_view);
+
+        // Find the total plus button and setup the listener
+        mTotalPlusButton = (Button) findViewById(R.id.total_button_plus);
+        mTotalPlusButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                orderSupplier();
+                plusTotalButtonClicked();
+            }
+        });
+
+        // Find the total minus button and setup the listener
+        mTotalMinusButton = (Button) findViewById(R.id.total_button_minus);
+        mTotalMinusButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                minusTotalButtonClicked();
+            }
+        });
+
+        // Find the dispo plus button and setup the listener
+        mDispoPlusButton = (Button) findViewById(R.id.dispo_button_plus);
+        mDispoPlusButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                plusDispoButtonClicked();
+            }
+        });
+
+        // Find the dispo minus button and setup the listener
+        mDispoMinusButton = (Button) findViewById(R.id.dispo_button_minus);
+        mDispoMinusButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                minusDispoButtonClicked();
+            }
+        });
+
+        mAromazoneUrlEditText = (EditText) findViewById(R.id.edit_aromazone_url);
+
+        mWebsiteButton = (Button) findViewById(R.id.website_button);
+        mWebsiteButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                goToWebsite();
             }
         });
 
@@ -176,13 +245,29 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         // in order to figure out if we're creating a new plant or editing an existing one.
         Intent intent = getIntent();
         mCurrentPlantUri = intent.getData();
+        Bundle bundle = getIntent().getExtras();
+        mTableType = bundle.getInt("TableType");
+
+        if (mTableType == 7){
+            TextView densityText = (TextView) findViewById(R.id.density_text);
+            densityText.setVisibility(View.INVISIBLE);
+            mDensityEditText.setVisibility(View.INVISIBLE);
+            TextView quantityText = (TextView) findViewById(R.id.quantity_text);
+            quantityText.setVisibility(View.INVISIBLE);
+            View layoutQuantityGramMl = findViewById(R.id.layout_quantity_g_ml);
+            layoutQuantityGramMl.setVisibility(View.INVISIBLE);
+            View layoutCalculateReset = findViewById(R.id.layout_calculate_reset);
+            layoutCalculateReset.setVisibility(View.INVISIBLE);
+        } else {
+            View layoutQuantityTotalDispo = findViewById(R.id.layout_quantity_total_dispo);
+            layoutQuantityTotalDispo.setVisibility(View.GONE);
+        }
 
         // If the intent DOES NOT contain a plant content URI, then we know that we are
         // creating a new plant.
         if (mCurrentPlantUri == null) {
             // This is a new plant, so change the app bar to say "Add a Plant"
             setTitle(getString(R.string.editor_activity_title_new_plant));
-            displayQuantity();
             // Invalidate the options menu, so the "Delete" menu option can be hidden.
             // (It doesn't make sense to delete a plant that hasn't been created yet.)
             invalidateOptionsMenu();
@@ -199,10 +284,12 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         // or not, if the user tries to leave the editor without saving.
         mNameEditText.setOnTouchListener(mTouchListener);
         mPictureImageView.setOnTouchListener(mTouchListener);
-        mPriceEditText.setOnTouchListener(mTouchListener);
-        mSupplierInfoEditText.setOnTouchListener(mTouchListener);
-        mSupplierMailEditText.setOnTouchListener(mTouchListener);
-        mQuantityTextView.setOnTouchListener(mTouchListener);
+        mDensityEditText.setOnTouchListener(mTouchListener);
+        mQuantityGramEditText.setOnTouchListener(mTouchListener);
+        mQuantityMlEditText.setOnTouchListener(mTouchListener);
+        mQuantityTotalTextView.setOnTouchListener(mTouchListener);
+        mQuantityDispoTextView.setOnTouchListener(mTouchListener);
+        mAromazoneUrlEditText.setOnTouchListener(mTouchListener);
     }
 
     // Method that send an intent to the camera to take a picture
@@ -290,117 +377,827 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
      * Get user input from editor and save pet into database.
      */
     private boolean savePlant() {
-
-        // Read from input fields
-        // Use trim to eliminate leading or trailing white space
-        String nameString = mNameEditText.getText().toString().trim();
-        String priceString = mPriceEditText.getText().toString().trim();
-        String supplierInfoString = mSupplierInfoEditText.getText().toString().trim();
-        String supplierMailString = mSupplierMailEditText.getText().toString().trim();
-        String quantityString = mQuantityTextView.getText().toString();
-
-        // Check if this is supposed to be a new plant
-        // and check if all the fields in the editor are blank
-        if (mCurrentPlantUri == null &&
-                TextUtils.isEmpty(nameString) && TextUtils.isEmpty(nameString) && TextUtils.isEmpty(priceString) &&
-                TextUtils.isEmpty(supplierInfoString) && TextUtils.isEmpty(supplierMailString) &&
-                mImageUri == null) {
-            // Since no fields were modified, we can return early without creating a new plant.
-            // No need to create ContentValues and no need to do any ContentProvider operations.
-            return true;
-        }
-
         // Create a ContentValues object where column names are the keys,
         // and plant attributes from the editor are the values.
         ContentValues values = new ContentValues();
-        values.put(PlantEntry.COLUMN_PLANT_QUANTITY, quantityString);
 
-        // Inform the user that the name must be filled
-        if (TextUtils.isEmpty(nameString)) {
-            Toast.makeText(this, getString(R.string.plant_name_required), Toast.LENGTH_SHORT).show();
-            return false;
+        switch (mTableType){
+            case 0:
+                // Read from input fields
+                // Use trim to eliminate leading or trailing white space
+                String nameString = mNameEditText.getText().toString().trim();
+                String densityString = mDensityEditText.getText().toString();
+                String quantityGramString = mQuantityGramEditText.getText().toString();
+                String quantityMlString = mQuantityMlEditText.getText().toString();
+                String aromazoneString = mAromazoneUrlEditText.getText().toString();
+
+                // Check if this is supposed to be a new plant
+                // and check if all the fields in the editor are blank
+                if (mCurrentPlantUri == null &&
+                        TextUtils.isEmpty(nameString) && TextUtils.isEmpty(densityString) &&
+                        TextUtils.isEmpty(quantityGramString) && TextUtils.isEmpty(quantityMlString)
+                        && TextUtils.isEmpty(aromazoneString) && mImageUri == null) {
+                    // Since no fields were modified, we can return early without creating a new plant.
+                    // No need to create ContentValues and no need to do any ContentProvider operations.
+                    return true;
+                }
+
+                // Inform the user that the name must be filled
+                if (TextUtils.isEmpty(nameString)) {
+                    Toast.makeText(this, getString(R.string.plant_name_required), Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+                // Put the name value in the ContentValues
+                values.put(HydrolatEntry.COLUMN_HYDRO_NAME, nameString);
+
+                if (mImageUri == null) {
+                    String imagePlaceHolderUri = getString(R.string.dummy_plant_picture_uri);
+                    values.put(HydrolatEntry.COLUMN_HYDRO_PICTURE, imagePlaceHolderUri);
+                } else {
+                    values.put(HydrolatEntry.COLUMN_HYDRO_PICTURE, mImageUri.toString());
+                }
+
+                // If density not provided put Unknown in the database
+                if (TextUtils.isEmpty(densityString)) {
+                    densityString = "Unknown";
+                    values.put(HydrolatEntry.COLUMN_HYDRO_DENSITY, densityString);
+                } else {
+                    values.put(HydrolatEntry.COLUMN_HYDRO_DENSITY, densityString);
+                }
+
+                // If the quantity in gram is not provided put Not provided in the database
+                if (TextUtils.isEmpty(quantityGramString)) {
+                    quantityGramString = "NA";
+                    values.put(HydrolatEntry.COLUMN_HYDRO_QUANTITY_GRAM, quantityGramString);
+                } else {
+                    values.put(HydrolatEntry.COLUMN_HYDRO_QUANTITY_GRAM, quantityGramString);
+                }
+
+                // If the quantity in mL is not provided put Not provided in the database
+                if (TextUtils.isEmpty(quantityMlString)) {
+                    quantityMlString = "NA";
+                    values.put(HydrolatEntry.COLUMN_HYDRO_QUANTITY_ML, quantityMlString);
+                } else {
+                    values.put(HydrolatEntry.COLUMN_HYDRO_QUANTITY_ML, quantityMlString);
+                }
+
+                // If the aromazone url is not provided put Not provided in the database
+                if (TextUtils.isEmpty(aromazoneString)) {
+                    aromazoneString = "Not Provided";
+                    values.put(HydrolatEntry.COLUMN_HYDRO_AROMAZONE_URL, aromazoneString);
+                } else {
+                    values.put(HydrolatEntry.COLUMN_HYDRO_AROMAZONE_URL, aromazoneString);
+                }
+
+                // Determine if this is a new or existing plant by checking if mCurrentPlantUri is null or not
+                if (mCurrentPlantUri == null) {
+                    // This is a NEW plant, so insert a new plant into the provider,
+                    // returning the content URI for the new plant.
+                    Uri newUri = getContentResolver().insert(HydrolatEntry.CONTENT_URI, values);
+
+                    // Show a toast message depending on whether or not the insertion was successful.
+                    if (newUri == null) {
+                        // If the new content URI is null, then there was an error with insertion.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the insertion was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    // Otherwise this is an EXISTING plant, so update the plant with content URI: mCurrentPlantUri
+                    // and pass in the new ContentValues. Pass in null for the selection and selection args
+                    // because mCurrentPlantUri will already identify the correct row in the database that
+                    // we want to modify.
+                    int rowsAffected = getContentResolver().update(mCurrentPlantUri, values, null, null);
+
+                    // Show a toast message depending on whether or not the update was successful.
+                    if (rowsAffected == 0) {
+                        // If no rows were affected, then there was an error with the update.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the update was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                }
+                return true;
+            case 1:
+                // Read from input fields
+                // Use trim to eliminate leading or trailing white space
+                nameString = mNameEditText.getText().toString().trim();
+                densityString = mDensityEditText.getText().toString();
+                quantityGramString = mQuantityGramEditText.getText().toString();
+                quantityMlString = mQuantityMlEditText.getText().toString();
+                aromazoneString = mAromazoneUrlEditText.getText().toString();
+
+                // Check if this is supposed to be a new plant
+                // and check if all the fields in the editor are blank
+                if (mCurrentPlantUri == null &&
+                        TextUtils.isEmpty(nameString) && TextUtils.isEmpty(densityString) &&
+                        TextUtils.isEmpty(quantityGramString) && TextUtils.isEmpty(quantityMlString)
+                        && TextUtils.isEmpty(aromazoneString) && mImageUri == null) {
+                    // Since no fields were modified, we can return early without creating a new plant.
+                    // No need to create ContentValues and no need to do any ContentProvider operations.
+                    return true;
+                }
+
+                // Inform the user that the name must be filled
+                if (TextUtils.isEmpty(nameString)) {
+                    Toast.makeText(this, getString(R.string.plant_name_required), Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+                // Put the name value in the ContentValues
+                values.put(HvEntry.COLUMN_HV_NAME, nameString);
+
+                if (mImageUri == null) {
+                    String imagePlaceHolderUri = getString(R.string.dummy_plant_picture_uri);
+                    values.put(HvEntry.COLUMN_HV_PICTURE, imagePlaceHolderUri);
+                } else {
+                    values.put(HvEntry.COLUMN_HV_PICTURE, mImageUri.toString());
+                }
+
+                // If density not provided put Unknown in the database
+                if (TextUtils.isEmpty(densityString)) {
+                    densityString = "Unknown";
+                    values.put(HvEntry.COLUMN_HV_DENSITY, densityString);
+                } else {
+                    values.put(HvEntry.COLUMN_HV_DENSITY, densityString);
+                }
+
+                // If the quantity in gram is not provided put Not provided in the database
+                if (TextUtils.isEmpty(quantityGramString)) {
+                    quantityGramString = "NA";
+                    values.put(HvEntry.COLUMN_HV_QUANTITY_GRAM, quantityGramString);
+                } else {
+                    values.put(HvEntry.COLUMN_HV_QUANTITY_GRAM, quantityGramString);
+                }
+
+                // If the quantity in mL is not provided put Not provided in the database
+                if (TextUtils.isEmpty(quantityMlString)) {
+                    quantityMlString = "NA";
+                    values.put(HvEntry.COLUMN_HV_QUANTITY_ML, quantityMlString);
+                } else {
+                    values.put(HvEntry.COLUMN_HV_QUANTITY_ML, quantityMlString);
+                }
+
+                // If the aromazone url is not prov
+                if (TextUtils.isEmpty(aromazoneString)) {
+                    aromazoneString = "Not Provided";
+                    values.put(HvEntry.COLUMN_HV_AROMAZONE_URL, aromazoneString);
+                } else {
+                    values.put(HvEntry.COLUMN_HV_AROMAZONE_URL, aromazoneString);
+                }
+
+                // Determine if this is a new or existing plant by checking if mCurrentPlantUri is null or not
+                if (mCurrentPlantUri == null) {
+                    // This is a NEW plant, so insert a new plant into the provider,
+                    // returning the content URI for the new plant.
+                    Uri newUri = getContentResolver().insert(HvEntry.CONTENT_URI, values);
+
+                    // Show a toast message depending on whether or not the insertion was successful.
+                    if (newUri == null) {
+                        // If the new content URI is null, then there was an error with insertion.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the insertion was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    // Otherwise this is an EXISTING plant, so update the plant with content URI: mCurrentPlantUri
+                    // and pass in the new ContentValues. Pass in null for the selection and selection args
+                    // because mCurrentPlantUri will already identify the correct row in the database that
+                    // we want to modify.
+                    int rowsAffected = getContentResolver().update(mCurrentPlantUri, values, null, null);
+
+                    // Show a toast message depending on whether or not the update was successful.
+                    if (rowsAffected == 0) {
+                        // If no rows were affected, then there was an error with the update.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the update was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                }
+                return true;
+            case 2:
+                // Read from input fields
+                // Use trim to eliminate leading or trailing white space
+                nameString = mNameEditText.getText().toString().trim();
+                densityString = mDensityEditText.getText().toString();
+                quantityGramString = mQuantityGramEditText.getText().toString();
+                quantityMlString = mQuantityMlEditText.getText().toString();
+                aromazoneString = mAromazoneUrlEditText.getText().toString();
+
+                // Check if this is supposed to be a new plant
+                // and check if all the fields in the editor are blank
+                if (mCurrentPlantUri == null &&
+                        TextUtils.isEmpty(nameString) && TextUtils.isEmpty(densityString) &&
+                        TextUtils.isEmpty(quantityGramString) && TextUtils.isEmpty(quantityMlString)
+                        && TextUtils.isEmpty(aromazoneString) && mImageUri == null) {
+                    // Since no fields were modified, we can return early without creating a new plant.
+                    // No need to create ContentValues and no need to do any ContentProvider operations.
+                    return true;
+                }
+
+                // Inform the user that the name must be filled
+                if (TextUtils.isEmpty(nameString)) {
+                    Toast.makeText(this, getString(R.string.plant_name_required), Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+                // Put the name value in the ContentValues
+                values.put(HeEntry.COLUMN_HE_NAME, nameString);
+
+                if (mImageUri == null) {
+                    String imagePlaceHolderUri = getString(R.string.dummy_plant_picture_uri);
+                    values.put(HeEntry.COLUMN_HE_PICTURE, imagePlaceHolderUri);
+                } else {
+                    values.put(HeEntry.COLUMN_HE_PICTURE, mImageUri.toString());
+                }
+
+                // If density not provided put Unknown in the database
+                if (TextUtils.isEmpty(densityString)) {
+                    densityString = "Unknown";
+                    values.put(HeEntry.COLUMN_HE_DENSITY, densityString);
+                } else {
+                    values.put(HeEntry.COLUMN_HE_DENSITY, densityString);
+                }
+
+                // If the quantity in gram is not provided put Not provided in the database
+                if (TextUtils.isEmpty(quantityGramString)) {
+                    quantityGramString = "NA";
+                    values.put(HeEntry.COLUMN_HE_QUANTITY_GRAM, quantityGramString);
+                } else {
+                    values.put(HeEntry.COLUMN_HE_QUANTITY_GRAM, quantityGramString);
+                }
+
+                // If the quantity in mL is not provided put Not provided in the database
+                if (TextUtils.isEmpty(quantityMlString)) {
+                    quantityMlString = "NA";
+                    values.put(HeEntry.COLUMN_HE_QUANTITY_ML, quantityMlString);
+                } else {
+                    values.put(HeEntry.COLUMN_HE_QUANTITY_ML, quantityMlString);
+                }
+
+                // If the aromazone url is not provided put Not provided in the database
+                if (TextUtils.isEmpty(aromazoneString)) {
+                    aromazoneString = "Not Provided";
+                    values.put(HeEntry.COLUMN_HE_AROMAZONE_URL, aromazoneString);
+                } else {
+                    values.put(HeEntry.COLUMN_HE_AROMAZONE_URL, aromazoneString);
+                }
+
+                // Determine if this is a new or existing plant by checking if mCurrentPlantUri is null or not
+                if (mCurrentPlantUri == null) {
+                    // This is a NEW plant, so insert a new plant into the provider,
+                    // returning the content URI for the new plant.
+                    Uri newUri = getContentResolver().insert(HeEntry.CONTENT_URI, values);
+
+                    // Show a toast message depending on whether or not the insertion was successful.
+                    if (newUri == null) {
+                        // If the new content URI is null, then there was an error with insertion.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the insertion was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    // Otherwise this is an EXISTING plant, so update the plant with content URI: mCurrentPlantUri
+                    // and pass in the new ContentValues. Pass in null for the selection and selection args
+                    // because mCurrentPlantUri will already identify the correct row in the database that
+                    // we want to modify.
+                    int rowsAffected = getContentResolver().update(mCurrentPlantUri, values, null, null);
+
+                    // Show a toast message depending on whether or not the update was successful.
+                    if (rowsAffected == 0) {
+                        // If no rows were affected, then there was an error with the update.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the update was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                }
+                return true;
+            case 3:
+                // Read from input fields
+                // Use trim to eliminate leading or trailing white space
+                nameString = mNameEditText.getText().toString().trim();
+                densityString = mDensityEditText.getText().toString();
+                quantityGramString = mQuantityGramEditText.getText().toString();
+                quantityMlString = mQuantityMlEditText.getText().toString();
+                aromazoneString = mAromazoneUrlEditText.getText().toString();
+
+                // Check if this is supposed to be a new plant
+                // and check if all the fields in the editor are blank
+                if (mCurrentPlantUri == null &&
+                        TextUtils.isEmpty(nameString) && TextUtils.isEmpty(densityString) &&
+                        TextUtils.isEmpty(quantityGramString) && TextUtils.isEmpty(quantityMlString)
+                        && TextUtils.isEmpty(aromazoneString) && mImageUri == null) {
+                    // Since no fields were modified, we can return early without creating a new plant.
+                    // No need to create ContentValues and no need to do any ContentProvider operations.
+                    return true;
+                }
+
+                // Inform the user that the name must be filled
+                if (TextUtils.isEmpty(nameString)) {
+                    Toast.makeText(this, getString(R.string.plant_name_required), Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+                // Put the name value in the ContentValues
+                values.put(ExtrEntry.COLUMN_EXTR_NAME, nameString);
+
+                if (mImageUri == null) {
+                    String imagePlaceHolderUri = getString(R.string.dummy_plant_picture_uri);
+                    values.put(ExtrEntry.COLUMN_EXTR_PICTURE, imagePlaceHolderUri);
+                } else {
+                    values.put(ExtrEntry.COLUMN_EXTR_PICTURE, mImageUri.toString());
+                }
+
+                // If density not provided put Unknown in the database
+                if (TextUtils.isEmpty(densityString)) {
+                    densityString = "Unknown";
+                    values.put(ExtrEntry.COLUMN_EXTR_DENSITY, densityString);
+                } else {
+                    values.put(ExtrEntry.COLUMN_EXTR_DENSITY, densityString);
+                }
+
+                // If the quantity in gram is not provided put Not provided in the database
+                if (TextUtils.isEmpty(quantityGramString)) {
+                    quantityGramString = "NA";
+                    values.put(ExtrEntry.COLUMN_EXTR_QUANTITY_GRAM, quantityGramString);
+                } else {
+                    values.put(ExtrEntry.COLUMN_EXTR_QUANTITY_GRAM, quantityGramString);
+                }
+
+                // If the quantity in mL is not provided put Not provided in the database
+                if (TextUtils.isEmpty(quantityMlString)) {
+                    quantityMlString = "NA";
+                    values.put(ExtrEntry.COLUMN_EXTR_QUANTITY_ML, quantityMlString);
+                } else {
+                    values.put(ExtrEntry.COLUMN_EXTR_QUANTITY_ML, quantityMlString);
+                }
+
+                // If the aromazone url is not provided put Not provided in the database
+                if (TextUtils.isEmpty(aromazoneString)) {
+                    aromazoneString = "Not Provided";
+                    values.put(ExtrEntry.COLUMN_EXTR_AROMAZONE_URL, aromazoneString);
+                } else {
+                    values.put(ExtrEntry.COLUMN_EXTR_AROMAZONE_URL, aromazoneString);
+                }
+
+                // Determine if this is a new or existing plant by checking if mCurrentPlantUri is null or not
+                if (mCurrentPlantUri == null) {
+                    // This is a NEW plant, so insert a new plant into the provider,
+                    // returning the content URI for the new plant.
+                    Uri newUri = getContentResolver().insert(ExtrEntry.CONTENT_URI, values);
+
+                    // Show a toast message depending on whether or not the insertion was successful.
+                    if (newUri == null) {
+                        // If the new content URI is null, then there was an error with insertion.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the insertion was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    // Otherwise this is an EXISTING plant, so update the plant with content URI: mCurrentPlantUri
+                    // and pass in the new ContentValues. Pass in null for the selection and selection args
+                    // because mCurrentPlantUri will already identify the correct row in the database that
+                    // we want to modify.
+                    int rowsAffected = getContentResolver().update(mCurrentPlantUri, values, null, null);
+
+                    // Show a toast message depending on whether or not the update was successful.
+                    if (rowsAffected == 0) {
+                        // If no rows were affected, then there was an error with the update.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the update was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                }
+                return true;
+            case 4:
+                // Read from input fields
+                // Use trim to eliminate leading or trailing white space
+                nameString = mNameEditText.getText().toString().trim();
+                densityString = mDensityEditText.getText().toString();
+                quantityGramString = mQuantityGramEditText.getText().toString();
+                quantityMlString = mQuantityMlEditText.getText().toString();
+                aromazoneString = mAromazoneUrlEditText.getText().toString();
+
+                // Check if this is supposed to be a new plant
+                // and check if all the fields in the editor are blank
+                if (mCurrentPlantUri == null &&
+                        TextUtils.isEmpty(nameString) && TextUtils.isEmpty(densityString) &&
+                        TextUtils.isEmpty(quantityGramString) && TextUtils.isEmpty(quantityMlString)
+                        && TextUtils.isEmpty(aromazoneString) && mImageUri == null) {
+                    // Since no fields were modified, we can return early without creating a new plant.
+                    // No need to create ContentValues and no need to do any ContentProvider operations.
+                    return true;
+                }
+
+                // Inform the user that the name must be filled
+                if (TextUtils.isEmpty(nameString)) {
+                    Toast.makeText(this, getString(R.string.plant_name_required), Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+                // Put the name value in the ContentValues
+                values.put(PoudrEntry.COLUMN_POUDR_NAME, nameString);
+
+                if (mImageUri == null) {
+                    String imagePlaceHolderUri = getString(R.string.dummy_plant_picture_uri);
+                    values.put(PoudrEntry.COLUMN_POUDR_PICTURE, imagePlaceHolderUri);
+                } else {
+                    values.put(PoudrEntry.COLUMN_POUDR_PICTURE, mImageUri.toString());
+                }
+
+                // If density not provided put Unknown in the database
+                if (TextUtils.isEmpty(densityString)) {
+                    densityString = "Unknown";
+                    values.put(PoudrEntry.COLUMN_POUDR_DENSITY, densityString);
+                } else {
+                    values.put(PoudrEntry.COLUMN_POUDR_DENSITY, densityString);
+                }
+
+                // If the quantity in gram is not provided put Not provided in the database
+                if (TextUtils.isEmpty(quantityGramString)) {
+                    quantityGramString = "NA";
+                    values.put(PoudrEntry.COLUMN_POUDR_QUANTITY_GRAM, quantityGramString);
+                } else {
+                    values.put(PoudrEntry.COLUMN_POUDR_QUANTITY_GRAM, quantityGramString);
+                }
+
+                // If the quantity in mL is not provided put Not provided in the database
+                if (TextUtils.isEmpty(quantityMlString)) {
+                    quantityMlString = "NA";
+                    values.put(PoudrEntry.COLUMN_POUDR_QUANTITY_ML, quantityMlString);
+                } else {
+                    values.put(PoudrEntry.COLUMN_POUDR_QUANTITY_ML, quantityMlString);
+                }
+
+                // If the aromazone url is not prov
+                if (TextUtils.isEmpty(aromazoneString)) {
+                    aromazoneString = "Not Provided";
+                    values.put(PoudrEntry.COLUMN_POUDR_AROMAZONE_URL, aromazoneString);
+                } else {
+                    values.put(PoudrEntry.COLUMN_POUDR_AROMAZONE_URL, aromazoneString);
+                }
+
+                // Determine if this is a new or existing plant by checking if mCurrentPlantUri is null or not
+                if (mCurrentPlantUri == null) {
+                    // This is a NEW plant, so insert a new plant into the provider,
+                    // returning the content URI for the new plant.
+                    Uri newUri = getContentResolver().insert(PoudrEntry.CONTENT_URI, values);
+
+                    // Show a toast message depending on whether or not the insertion was successful.
+                    if (newUri == null) {
+                        // If the new content URI is null, then there was an error with insertion.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the insertion was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    // Otherwise this is an EXISTING plant, so update the plant with content URI: mCurrentPlantUri
+                    // and pass in the new ContentValues. Pass in null for the selection and selection args
+                    // because mCurrentPlantUri will already identify the correct row in the database that
+                    // we want to modify.
+                    int rowsAffected = getContentResolver().update(mCurrentPlantUri, values, null, null);
+
+                    // Show a toast message depending on whether or not the update was successful.
+                    if (rowsAffected == 0) {
+                        // If no rows were affected, then there was an error with the update.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the update was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                }
+                return true;
+            case 5:
+                // Read from input fields
+                // Use trim to eliminate leading or trailing white space
+                nameString = mNameEditText.getText().toString().trim();
+                densityString = mDensityEditText.getText().toString();
+                quantityGramString = mQuantityGramEditText.getText().toString();
+                quantityMlString = mQuantityMlEditText.getText().toString();
+                aromazoneString = mAromazoneUrlEditText.getText().toString();
+
+                // Check if this is supposed to be a new plant
+                // and check if all the fields in the editor are blank
+                if (mCurrentPlantUri == null &&
+                        TextUtils.isEmpty(nameString) && TextUtils.isEmpty(densityString) &&
+                        TextUtils.isEmpty(quantityGramString) && TextUtils.isEmpty(quantityMlString)
+                        && TextUtils.isEmpty(aromazoneString) && mImageUri == null) {
+                    // Since no fields were modified, we can return early without creating a new plant.
+                    // No need to create ContentValues and no need to do any ContentProvider operations.
+                    return true;
+                }
+
+                // Inform the user that the name must be filled
+                if (TextUtils.isEmpty(nameString)) {
+                    Toast.makeText(this, getString(R.string.plant_name_required), Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+                // Put the name value in the ContentValues
+                values.put(ActifEntry.COLUMN_ACTIF_NAME, nameString);
+
+                if (mImageUri == null) {
+                    String imagePlaceHolderUri = getString(R.string.dummy_plant_picture_uri);
+                    values.put(ActifEntry.COLUMN_ACTIF_PICTURE, imagePlaceHolderUri);
+                } else {
+                    values.put(ActifEntry.COLUMN_ACTIF_PICTURE, mImageUri.toString());
+                }
+
+                // If density not provided put Unknown in the database
+                if (TextUtils.isEmpty(densityString)) {
+                    densityString = "Unknown";
+                    values.put(ActifEntry.COLUMN_ACTIF_DENSITY, densityString);
+                } else {
+                    values.put(ActifEntry.COLUMN_ACTIF_DENSITY, densityString);
+                }
+
+                // If the quantity in gram is not provided put Not provided in the database
+                if (TextUtils.isEmpty(quantityGramString)) {
+                    quantityGramString = "NA";
+                    values.put(ActifEntry.COLUMN_ACTIF_QUANTITY_GRAM, quantityGramString);
+                } else {
+                    values.put(ActifEntry.COLUMN_ACTIF_QUANTITY_GRAM, quantityGramString);
+                }
+
+                // If the quantity in mL is not provided put Not provided in the database
+                if (TextUtils.isEmpty(quantityMlString)) {
+                    quantityMlString = "NA";
+                    values.put(ActifEntry.COLUMN_ACTIF_QUANTITY_ML, quantityMlString);
+                } else {
+                    values.put(ActifEntry.COLUMN_ACTIF_QUANTITY_ML, quantityMlString);
+                }
+
+                // If the aromazone url is not provided put Not provided in the database
+                if (TextUtils.isEmpty(aromazoneString)) {
+                    aromazoneString = "Not Provided";
+                    values.put(ActifEntry.COLUMN_ACTIF_AROMAZONE_URL, aromazoneString);
+                } else {
+                    values.put(ActifEntry.COLUMN_ACTIF_AROMAZONE_URL, aromazoneString);
+                }
+
+                // Determine if this is a new or existing plant by checking if mCurrentPlantUri is null or not
+                if (mCurrentPlantUri == null) {
+                    // This is a NEW plant, so insert a new plant into the provider,
+                    // returning the content URI for the new plant.
+                    Uri newUri = getContentResolver().insert(ActifEntry.CONTENT_URI, values);
+
+                    // Show a toast message depending on whether or not the insertion was successful.
+                    if (newUri == null) {
+                        // If the new content URI is null, then there was an error with insertion.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the insertion was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    // Otherwise this is an EXISTING plant, so update the plant with content URI: mCurrentPlantUri
+                    // and pass in the new ContentValues. Pass in null for the selection and selection args
+                    // because mCurrentPlantUri will already identify the correct row in the database that
+                    // we want to modify.
+                    int rowsAffected = getContentResolver().update(mCurrentPlantUri, values, null, null);
+
+                    // Show a toast message depending on whether or not the update was successful.
+                    if (rowsAffected == 0) {
+                        // If no rows were affected, then there was an error with the update.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the update was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                }
+                return true;
+            case 6:
+                // Read from input fields
+                // Use trim to eliminate leading or trailing white space
+                nameString = mNameEditText.getText().toString().trim();
+                densityString = mDensityEditText.getText().toString();
+                quantityGramString = mQuantityGramEditText.getText().toString();
+                quantityMlString = mQuantityMlEditText.getText().toString();
+                aromazoneString = mAromazoneUrlEditText.getText().toString();
+
+                // Check if this is supposed to be a new plant
+                // and check if all the fields in the editor are blank
+                if (mCurrentPlantUri == null &&
+                        TextUtils.isEmpty(nameString) && TextUtils.isEmpty(densityString) &&
+                        TextUtils.isEmpty(quantityGramString) && TextUtils.isEmpty(quantityMlString)
+                        && TextUtils.isEmpty(aromazoneString) && mImageUri == null) {
+                    // Since no fields were modified, we can return early without creating a new plant.
+                    // No need to create ContentValues and no need to do any ContentProvider operations.
+                    return true;
+                }
+
+                // Inform the user that the name must be filled
+                if (TextUtils.isEmpty(nameString)) {
+                    Toast.makeText(this, getString(R.string.plant_name_required), Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+                // Put the name value in the ContentValues
+                values.put(DiversEntry.COLUMN_DIVERS_NAME, nameString);
+
+                if (mImageUri == null) {
+                    String imagePlaceHolderUri = getString(R.string.dummy_plant_picture_uri);
+                    values.put(DiversEntry.COLUMN_DIVERS_PICTURE, imagePlaceHolderUri);
+                } else {
+                    values.put(DiversEntry.COLUMN_DIVERS_PICTURE, mImageUri.toString());
+                }
+
+                // If density not provided put Unknown in the database
+                if (TextUtils.isEmpty(densityString)) {
+                    densityString = "Unknown";
+                    values.put(DiversEntry.COLUMN_DIVERS_DENSITY, densityString);
+                } else {
+                    values.put(DiversEntry.COLUMN_DIVERS_DENSITY, densityString);
+                }
+
+                // If the quantity in gram is not provided put Not provided in the database
+                if (TextUtils.isEmpty(quantityGramString)) {
+                    quantityGramString = "NA";
+                    values.put(DiversEntry.COLUMN_DIVERS_QUANTITY_GRAM, quantityGramString);
+                } else {
+                    values.put(DiversEntry.COLUMN_DIVERS_QUANTITY_GRAM, quantityGramString);
+                }
+
+                // If the quantity in mL is not provided put Not provided in the database
+                if (TextUtils.isEmpty(quantityMlString)) {
+                    quantityMlString = "NA";
+                    values.put(DiversEntry.COLUMN_DIVERS_QUANTITY_ML, quantityMlString);
+                } else {
+                    values.put(DiversEntry.COLUMN_DIVERS_QUANTITY_ML, quantityMlString);
+                }
+
+                // If the aromazone url is not provided put Not provided in the database
+                if (TextUtils.isEmpty(aromazoneString)) {
+                    aromazoneString = "Not Provided";
+                    values.put(DiversEntry.COLUMN_DIVERS_AROMAZONE_URL, aromazoneString);
+                } else {
+                    values.put(DiversEntry.COLUMN_DIVERS_AROMAZONE_URL, aromazoneString);
+                }
+
+                // Determine if this is a new or existing plant by checking if mCurrentPlantUri is null or not
+                if (mCurrentPlantUri == null) {
+                    // This is a NEW plant, so insert a new plant into the provider,
+                    // returning the content URI for the new plant.
+                    Uri newUri = getContentResolver().insert(DiversEntry.CONTENT_URI, values);
+
+                    // Show a toast message depending on whether or not the insertion was successful.
+                    if (newUri == null) {
+                        // If the new content URI is null, then there was an error with insertion.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the insertion was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    // Otherwise this is an EXISTING plant, so update the plant with content URI: mCurrentPlantUri
+                    // and pass in the new ContentValues. Pass in null for the selection and selection args
+                    // because mCurrentPlantUri will already identify the correct row in the database that
+                    // we want to modify.
+                    int rowsAffected = getContentResolver().update(mCurrentPlantUri, values, null, null);
+
+                    // Show a toast message depending on whether or not the update was successful.
+                    if (rowsAffected == 0) {
+                        // If no rows were affected, then there was an error with the update.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the update was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                }
+                return true;
+            case 7:
+                nameString = mNameEditText.getText().toString().trim();
+                String quantityTotal = mQuantityTotalTextView.getText().toString();
+                String quantityDispo = mQuantityDispoTextView.getText().toString();
+                aromazoneString = mAromazoneUrlEditText.getText().toString();
+
+                // Check if this is supposed to be a new plant
+                // and check if all the fields in the editor are blank
+                if (mCurrentPlantUri == null &&
+                        TextUtils.isEmpty(nameString)  && TextUtils.isEmpty(quantityTotal) &&
+                        TextUtils.isEmpty(quantityDispo) && TextUtils.isEmpty(aromazoneString) &&
+                        mImageUri == null) {
+                    // Since no fields were modified, we can return early without creating a new plant.
+                    // No need to create ContentValues and no need to do any ContentProvider operations.
+                    return true;
+                }
+
+                // Inform the user that the name must be filled
+                if (TextUtils.isEmpty(nameString)) {
+                    Toast.makeText(this, getString(R.string.plant_name_required), Toast.LENGTH_SHORT).show();
+                    return false;
+                }
+                // Put the name value in the ContentValues
+                values.put(ContenEntry.COLUMN_CONTEN_NAME, nameString);
+
+                if (mImageUri == null) {
+                    String imagePlaceHolderUri = getString(R.string.dummy_plant_picture_uri);
+                    values.put(ContenEntry.COLUMN_CONTEN_PICTURE, imagePlaceHolderUri);
+                } else {
+                    values.put(ContenEntry.COLUMN_CONTEN_PICTURE, mImageUri.toString());
+                }
+
+                if (TextUtils.isEmpty(quantityTotal)) {
+                    quantityTotal = "0";
+                    values.put(ContenEntry.COLUMN_CONTEN_QUANTITY_TOTAL, quantityTotal);
+                } else {
+                    values.put(ContenEntry.COLUMN_CONTEN_QUANTITY_TOTAL, quantityTotal);
+                }
+
+                if (TextUtils.isEmpty(quantityDispo)) {
+                    quantityDispo = "0";
+                    values.put(ContenEntry.COLUMN_CONTEN_QUANTITY_DISPO, quantityDispo);
+                } else {
+                    values.put(ContenEntry.COLUMN_CONTEN_QUANTITY_DISPO, quantityDispo);
+                }
+
+                // If the aromazone url is not provided put Not provided in the database
+                if (TextUtils.isEmpty(aromazoneString)) {
+                    aromazoneString = "Not Provided";
+                    values.put(ContenEntry.COLUMN_CONTEN_AROMAZONE_URL, aromazoneString);
+                } else {
+                    values.put(ContenEntry.COLUMN_CONTEN_AROMAZONE_URL, aromazoneString);
+                }
+
+                // Determine if this is a new or existing plant by checking if mCurrentPlantUri is null or not
+                if (mCurrentPlantUri == null) {
+                    // This is a NEW plant, so insert a new plant into the provider,
+                    // returning the content URI for the new plant.
+                    Uri newUri = getContentResolver().insert(ContenEntry.CONTENT_URI, values);
+
+                    // Show a toast message depending on whether or not the insertion was successful.
+                    if (newUri == null) {
+                        // If the new content URI is null, then there was an error with insertion.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the insertion was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_insert_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    // Otherwise this is an EXISTING plant, so update the plant with content URI: mCurrentPlantUri
+                    // and pass in the new ContentValues. Pass in null for the selection and selection args
+                    // because mCurrentPlantUri will already identify the correct row in the database that
+                    // we want to modify.
+                    int rowsAffected = getContentResolver().update(mCurrentPlantUri, values, null, null);
+
+                    // Show a toast message depending on whether or not the update was successful.
+                    if (rowsAffected == 0) {
+                        // If no rows were affected, then there was an error with the update.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_failed), Toast.LENGTH_SHORT).show();
+                    } else {
+                        // Otherwise, the update was successful and we can display a toast.
+                        Toast.makeText(this, getString(R.string.editor_update_plant_successful), Toast.LENGTH_SHORT).show();
+                    }
+                }
+                return true;
+            default:
+                return false;
         }
-        // Put the name value in the ContentValues
-        values.put(PlantEntry.COLUMN_PLANT_NAME, nameString);
+    }
 
-        // Inform the user that the plant must have a picture (either chosen or taken)
-        if (mImageUri == null) {
-            Toast.makeText(this, getString(R.string.plant_picture_required), Toast.LENGTH_SHORT).show();
-            return false;
-        }
-        // Put the picture uri in the ContentValues
-        values.put(PlantEntry.COLUMN_PLANT_PICTURE, mImageUri.toString());
-
-        // Inform the user that the price must be filled
-        if (TextUtils.isEmpty(priceString)) {
-            Toast.makeText(this, getString(R.string.plant_price_required), Toast.LENGTH_SHORT).show();
-            return false;
-        }
-        // Put the price value in the ContentValues
-        values.put(PlantEntry.COLUMN_PLANT_PRICE, priceString);
-
-        // Inform the user that the supplier info field must be filled
-        if (TextUtils.isEmpty(supplierInfoString)) {
-            Toast.makeText(this, getString(R.string.plant_supplier_info_required), Toast.LENGTH_SHORT).show();
-            return false;
-        }
-        // Put the supplier info value in the ContentValues
-        values.put(PlantEntry.COLUMN_PLANT_SUPPLIER_INFO, supplierInfoString);
-
-        // Inform the user that the supplier mail field must be filled
-        if (TextUtils.isEmpty(supplierMailString)) {
-            Toast.makeText(this, getString(R.string.plant_supplier_mail_required), Toast.LENGTH_SHORT).show();
-            return false;
-        }
-        // Put the supplier mail value in the ContentValues
-        values.put(PlantEntry.COLUMN_PLANT_SUPPLIER_MAIL, supplierMailString);
-
-        // Determine if this is a new or existing plant by checking if mCurrentPetUri is null or not
-        if (mCurrentPlantUri == null) {
-            // This is a NEW plant, so insert a new plant into the provider,
-            // returning the content URI for the new plant.
-            Uri newUri = getContentResolver().insert(PlantEntry.CONTENT_URI, values);
-
-            // Show a toast message depending on whether or not the insertion was successful.
-            if (newUri == null) {
-                // If the new content URI is null, then there was an error with insertion.
-                Toast.makeText(this, getString(R.string.editor_insert_plant_failed), Toast.LENGTH_SHORT).show();
-            } else {
-                // Otherwise, the insertion was successful and we can display a toast.
-                Toast.makeText(this, getString(R.string.editor_insert_plant_successful), Toast.LENGTH_SHORT).show();
+    // Method to calculate the conversion in g and mL
+    public void calculateWithDensity(){
+        try {
+            float density = Float.parseFloat(mDensityEditText.getText().toString());
+            if (!TextUtils.isEmpty(mQuantityGramEditText.getText().toString()) || mQuantityGramEditText.getText().toString().contains("NA")){
+                try {
+                    Float conversionGramMl = Float.parseFloat(mQuantityGramEditText.getText().toString()) / density;
+                    mQuantityMlEditText.setText(String.format("%.2f",conversionGramMl));
+                } catch (NumberFormatException nfEx){
+                    Toast.makeText(this, "Not a valid Gram Quantity", Toast.LENGTH_SHORT).show();
+                }
+            } else if (!TextUtils.isEmpty(mQuantityMlEditText.getText().toString()) || mQuantityMlEditText.getText().toString().contains("NA")){
+                try {
+                    Float conversionMlGram = Float.parseFloat(mQuantityMlEditText.getText().toString()) * density;
+                    mQuantityGramEditText.setText(String.format("%.2f",conversionMlGram));
+                } catch (NumberFormatException nfEx) {
+                    Toast.makeText(this, "Not a valid mL Quantity", Toast.LENGTH_SHORT).show();
+                }
             }
+        } catch (NumberFormatException nfEx){
+            Toast.makeText(this, "Not a valid Density", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // Method to reset both quantity EditTextViews
+    public void resetQuantityEditTexts(){
+        mQuantityGramEditText.setText("");
+        mQuantityMlEditText.setText("");
+    }
+
+    // Method to go to the website provided by the user
+    public void goToWebsite(){
+        Uri websiteUrl = Uri.parse(mAromazoneUrlEditText.toString());
+        Intent website = new Intent(Intent.ACTION_VIEW, websiteUrl);
+        if (website.resolveActivity(getPackageManager()) != null) {
+            startActivity(website);
         } else {
-            // Otherwise this is an EXISTING plant, so update the plant with content URI: mCurrentPlantUri
-            // and pass in the new ContentValues. Pass in null for the selection and selection args
-            // because mCurrentPlantUri will already identify the correct row in the database that
-            // we want to modify.
-            int rowsAffected = getContentResolver().update(mCurrentPlantUri, values, null, null);
-
-            // Show a toast message depending on whether or not the update was successful.
-            if (rowsAffected == 0) {
-                // If no rows were affected, then there was an error with the update.
-                Toast.makeText(this, getString(R.string.editor_update_plant_failed), Toast.LENGTH_SHORT).show();
-            } else {
-                // Otherwise, the update was successful and we can display a toast.
-                Toast.makeText(this, getString(R.string.editor_update_plant_successful), Toast.LENGTH_SHORT).show();
-            }
-        }
-        return true;
-    }
-
-    // Method to send an email to the supplier mail, passing some content.
-    public void orderSupplier(){
-        Intent mailSupplier = new Intent(android.content.Intent.ACTION_SENDTO);
-        mailSupplier.setType("text/plain");
-        mailSupplier.setData(Uri.parse("mailto:" + mSupplierMailEditText.getText().toString().trim()));
-        mailSupplier.putExtra(android.content.Intent.EXTRA_SUBJECT, "New Order");
-        String mailText = "We need a new order of " + mNameEditText.getText().toString().trim();
-        mailSupplier.putExtra(android.content.Intent.EXTRA_TEXT,mailText);
-        if (mailSupplier.resolveActivity(getPackageManager()) != null) {
-            startActivity(mailSupplier);
+            Toast.makeText(this, "Problem with the url provided", Toast.LENGTH_SHORT).show();
         }
     }
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -447,7 +1244,7 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
                 // If the plant hasn't changed, continue with navigating up to parent activity
                 // which is the {@link StockActivity}.
                 if (!mPlantHasChanged) {
-                    NavUtils.navigateUpFromSameTask(EditorActivity.this);
+                    finish();
                     return true;
                 }
 
@@ -459,7 +1256,7 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
                             @Override
                             public void onClick(DialogInterface dialogInterface, int i) {
                                 // User clicked "Discard" button, navigate to parent activity.
-                                NavUtils.navigateUpFromSameTask(EditorActivity.this);
+                                finish();
                             }
                         };
 
@@ -498,24 +1295,161 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
 
     @Override
     public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
-        // Since the editor shows all plant attributes, define a projection that contains
-        // all columns from the plants table
-        String[] projection = {
-                PlantEntry._ID,
-                PlantEntry.COLUMN_PLANT_NAME,
-                PlantEntry.COLUMN_PLANT_PICTURE,
-                PlantEntry.COLUMN_PLANT_QUANTITY,
-                PlantEntry.COLUMN_PLANT_PRICE,
-                PlantEntry.COLUMN_PLANT_SUPPLIER_INFO,
-                PlantEntry.COLUMN_PLANT_SUPPLIER_MAIL};
+        switch (mTableType){
+            case 0:
+                // Since the editor shows all plant attributes, define a projection that contains
+                // all columns from the plants table
+                String[] projectionHydrolat = {
+                        HydrolatEntry._ID,
+                        HydrolatEntry.COLUMN_HYDRO_NAME,
+                        HydrolatEntry.COLUMN_HYDRO_PICTURE,
+                        HydrolatEntry.COLUMN_HYDRO_DENSITY,
+                        HydrolatEntry.COLUMN_HYDRO_QUANTITY_GRAM,
+                        HydrolatEntry.COLUMN_HYDRO_QUANTITY_ML,
+                        HydrolatEntry.COLUMN_HYDRO_AROMAZONE_URL};
 
-        // This loader will execute the ContentProvider's query method on a background thread
-        return new CursorLoader(this,   // Parent activity context
-                mCurrentPlantUri,       // Query the content URI for the current pet
-                projection,             // Columns to include in the resulting Cursor
-                null,                   // No selection clause
-                null,                   // No selection arguments
-                null);                  // Default sort order
+                // This loader will execute the ContentProvider's query method on a background thread
+                return new CursorLoader(this,   // Parent activity context
+                        mCurrentPlantUri,       // Query the content URI for the current pet
+                        projectionHydrolat,             // Columns to include in the resulting Cursor
+                        null,                   // No selection clause
+                        null,                   // No selection arguments
+                        null);                  // Default sort order
+            case 1:
+                // Since the editor shows all plant attributes, define a projection that contains
+                // all columns from the plants table
+                String[] projectionHv = {
+                        HvEntry._ID,
+                        HvEntry.COLUMN_HV_NAME,
+                        HvEntry.COLUMN_HV_PICTURE,
+                        HvEntry.COLUMN_HV_DENSITY,
+                        HvEntry.COLUMN_HV_QUANTITY_GRAM,
+                        HvEntry.COLUMN_HV_QUANTITY_ML,
+                        HvEntry.COLUMN_HV_AROMAZONE_URL};
+
+                // This loader will execute the ContentProvider's query method on a background thread
+                return new CursorLoader(this,   // Parent activity context
+                        mCurrentPlantUri,       // Query the content URI for the current pet
+                        projectionHv,             // Columns to include in the resulting Cursor
+                        null,                   // No selection clause
+                        null,                   // No selection arguments
+                        null);
+            case 2:
+                // Since the editor shows all plant attributes, define a projection that contains
+                // all columns from the plants table
+                String[] projectionHe = {
+                        HeEntry._ID,
+                        HeEntry.COLUMN_HE_NAME,
+                        HeEntry.COLUMN_HE_PICTURE,
+                        HeEntry.COLUMN_HE_DENSITY,
+                        HeEntry.COLUMN_HE_QUANTITY_GRAM,
+                        HeEntry.COLUMN_HE_QUANTITY_ML,
+                        HeEntry.COLUMN_HE_AROMAZONE_URL};
+
+                // This loader will execute the ContentProvider's query method on a background thread
+                return new CursorLoader(this,   // Parent activity context
+                        mCurrentPlantUri,       // Query the content URI for the current pet
+                        projectionHe,             // Columns to include in the resulting Cursor
+                        null,                   // No selection clause
+                        null,                   // No selection arguments
+                        null);                  // Default sort order
+            case 3:
+                // Since the editor shows all plant attributes, define a projection that contains
+                // all columns from the plants table
+                String[] projectionExtr = {
+                        ExtrEntry._ID,
+                        ExtrEntry.COLUMN_EXTR_NAME,
+                        ExtrEntry.COLUMN_EXTR_PICTURE,
+                        ExtrEntry.COLUMN_EXTR_DENSITY,
+                        ExtrEntry.COLUMN_EXTR_QUANTITY_GRAM,
+                        ExtrEntry.COLUMN_EXTR_QUANTITY_ML,
+                        ExtrEntry.COLUMN_EXTR_AROMAZONE_URL};
+
+                // This loader will execute the ContentProvider's query method on a background thread
+                return new CursorLoader(this,   // Parent activity context
+                        mCurrentPlantUri,       // Query the content URI for the current pet
+                        projectionExtr,             // Columns to include in the resulting Cursor
+                        null,                   // No selection clause
+                        null,                   // No selection arguments
+                        null);                  // Default sort order
+            case 4:
+                // Since the editor shows all plant attributes, define a projection that contains
+                // all columns from the plants table
+                String[] projectionPoudr = {
+                        PoudrEntry._ID,
+                        PoudrEntry.COLUMN_POUDR_NAME,
+                        PoudrEntry.COLUMN_POUDR_PICTURE,
+                        PoudrEntry.COLUMN_POUDR_DENSITY,
+                        PoudrEntry.COLUMN_POUDR_QUANTITY_GRAM,
+                        PoudrEntry.COLUMN_POUDR_QUANTITY_ML,
+                        PoudrEntry.COLUMN_POUDR_AROMAZONE_URL};
+
+                // This loader will execute the ContentProvider's query method on a background thread
+                return new CursorLoader(this,   // Parent activity context
+                        mCurrentPlantUri,       // Query the content URI for the current pet
+                        projectionPoudr,             // Columns to include in the resulting Cursor
+                        null,                   // No selection clause
+                        null,                   // No selection arguments
+                        null);                  // Default sort order
+            case 5:
+                // Since the editor shows all plant attributes, define a projection that contains
+                // all columns from the plants table
+                String[] projectionActif = {
+                        ActifEntry._ID,
+                        ActifEntry.COLUMN_ACTIF_NAME,
+                        ActifEntry.COLUMN_ACTIF_PICTURE,
+                        ActifEntry.COLUMN_ACTIF_DENSITY,
+                        ActifEntry.COLUMN_ACTIF_QUANTITY_GRAM,
+                        ActifEntry.COLUMN_ACTIF_QUANTITY_ML,
+                        ActifEntry.COLUMN_ACTIF_AROMAZONE_URL};
+
+                // This loader will execute the ContentProvider's query method on a background thread
+                return new CursorLoader(this,   // Parent activity context
+                        mCurrentPlantUri,       // Query the content URI for the current pet
+                        projectionActif,             // Columns to include in the resulting Cursor
+                        null,                   // No selection clause
+                        null,                   // No selection arguments
+                        null);                  // Default sort order
+            case 6:
+                // Since the editor shows all plant attributes, define a projection that contains
+                // all columns from the plants table
+                String[] projectionDivers = {
+                        DiversEntry._ID,
+                        DiversEntry.COLUMN_DIVERS_NAME,
+                        DiversEntry.COLUMN_DIVERS_PICTURE,
+                        DiversEntry.COLUMN_DIVERS_DENSITY,
+                        DiversEntry.COLUMN_DIVERS_QUANTITY_GRAM,
+                        DiversEntry.COLUMN_DIVERS_QUANTITY_ML,
+                        DiversEntry.COLUMN_DIVERS_AROMAZONE_URL};
+
+                // This loader will execute the ContentProvider's query method on a background thread
+                return new CursorLoader(this,   // Parent activity context
+                        mCurrentPlantUri,       // Query the content URI for the current pet
+                        projectionDivers,             // Columns to include in the resulting Cursor
+                        null,                   // No selection clause
+                        null,                   // No selection arguments
+                        null);                  // Default sort order
+            case 7:
+                // Since the editor shows all plant attributes, define a projection that contains
+                // all columns from the plants table
+                String[] projectionConten = {
+                        ContenEntry._ID,
+                        ContenEntry.COLUMN_CONTEN_NAME,
+                        ContenEntry.COLUMN_CONTEN_PICTURE,
+                        ContenEntry.COLUMN_CONTEN_QUANTITY_TOTAL,
+                        ContenEntry.COLUMN_CONTEN_QUANTITY_DISPO,
+                        ContenEntry.COLUMN_CONTEN_AROMAZONE_URL};
+
+                // This loader will execute the ContentProvider's query method on a background thread
+                return new CursorLoader(this,   // Parent activity context
+                        mCurrentPlantUri,       // Query the content URI for the current pet
+                        projectionConten,             // Columns to include in the resulting Cursor
+                        null,                   // No selection clause
+                        null,                   // No selection arguments
+                        null);                  // Default sort order
+            default:
+                return null;
+        }
     }
 
     @Override
@@ -528,41 +1462,239 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
         // Proceed with moving to the first row of the cursor and reading data from it
         // (This should be the only row in the cursor)
         if (cursor.moveToFirst()) {
-            // Find the columns of plant attributes that we're interested in
-            int nameColumnIndex = cursor.getColumnIndex(PlantEntry.COLUMN_PLANT_NAME);
-            int pictureColumnIndex = cursor.getColumnIndex(PlantEntry.COLUMN_PLANT_PICTURE);
-            int quantityColumnIndex = cursor.getColumnIndex(PlantEntry.COLUMN_PLANT_QUANTITY);
-            int priceColumnIndex = cursor.getColumnIndex(PlantEntry.COLUMN_PLANT_PRICE);
-            int supplierInfoColumnIndex = cursor.getColumnIndex(PlantEntry.COLUMN_PLANT_SUPPLIER_INFO);
-            int supplierMailColumnIndex = cursor.getColumnIndex(PlantEntry.COLUMN_PLANT_SUPPLIER_MAIL);
+            switch (mTableType){
+                case 0:
+                    // Find the columns of plant attributes that we're interested in
+                    int nameHydrolatColumnIndex = cursor.getColumnIndex(HydrolatEntry.COLUMN_HYDRO_NAME);
+                    int pictureHydrolatColumnIndex = cursor.getColumnIndex(HydrolatEntry.COLUMN_HYDRO_PICTURE);
+                    int densityHydrolatColumnIndex = cursor.getColumnIndex(HydrolatEntry.COLUMN_HYDRO_DENSITY);
+                    int quantityGramHydrolatColumnIndex = cursor.getColumnIndex(HydrolatEntry.COLUMN_HYDRO_QUANTITY_GRAM);
+                    int quantityMlHydrolatColumnIndex = cursor.getColumnIndex(HydrolatEntry.COLUMN_HYDRO_QUANTITY_ML);
+                    int aromazoneUrlHydrolatColumnIndex = cursor.getColumnIndex(HydrolatEntry.COLUMN_HYDRO_AROMAZONE_URL);
 
-            // Extract out the value from the Cursor for the given column index
-            String name = cursor.getString(nameColumnIndex);
-            String imageUriString = cursor.getString(pictureColumnIndex);
-            mQuantity = cursor.getInt(quantityColumnIndex);
-            String price = cursor.getString(priceColumnIndex);
-            String supplierInfo = cursor.getString(supplierInfoColumnIndex);
-            String supplierMail = cursor.getString(supplierMailColumnIndex);
+                    // Extract out the value from the Cursor for the given column index
+                    String nameHydrolat = cursor.getString(nameHydrolatColumnIndex);
+                    String imageUriHydrolatString = cursor.getString(pictureHydrolatColumnIndex);
+                    String densityHydrolat = cursor.getString(densityHydrolatColumnIndex);
+                    String quantityGramHydrolat = cursor.getString(quantityGramHydrolatColumnIndex);
+                    String quantityMlHydrolat = cursor.getString(quantityMlHydrolatColumnIndex);
+                    String aromazoneWebsiteHydrolat = cursor.getString(aromazoneUrlHydrolatColumnIndex);
 
-            // Update the views on the screen with the values from the database
-            mNameEditText.setText(name);
-            mPriceEditText.setText(price);
-            mSupplierInfoEditText.setText(supplierInfo);
-            mSupplierMailEditText.setText(supplierMail);
-            mQuantityTextView.setText(Integer.toString(mQuantity));
-            mImageUri = Uri.parse(imageUriString);
-            mPictureImageView.setImageURI(mImageUri);
+                    // Update the views on the screen with the values from the database
+                    mNameEditText.setText(nameHydrolat);
+                    mImageUri = Uri.parse(imageUriHydrolatString);
+                    mPictureImageView.setImageURI(mImageUri);
+                    mDensityEditText.setText(densityHydrolat);
+                    mQuantityGramEditText.setText(quantityGramHydrolat);
+                    mQuantityMlEditText.setText(quantityMlHydrolat);
+                    mAromazoneUrlEditText.setText(aromazoneWebsiteHydrolat);
+                    break;
+
+                case 1:
+                    // Find the columns of plant attributes that we're interested in
+                    int nameHvColumnIndex = cursor.getColumnIndex(HvEntry.COLUMN_HV_NAME);
+                    int pictureHvColumnIndex = cursor.getColumnIndex(HvEntry.COLUMN_HV_PICTURE);
+                    int densityHvColumnIndex = cursor.getColumnIndex(HvEntry.COLUMN_HV_DENSITY);
+                    int quantityGramHvColumnIndex = cursor.getColumnIndex(HvEntry.COLUMN_HV_QUANTITY_GRAM);
+                    int quantityMlHvColumnIndex = cursor.getColumnIndex(HvEntry.COLUMN_HV_QUANTITY_ML);
+                    int aromazoneUrlHvColumnIndex = cursor.getColumnIndex(HvEntry.COLUMN_HV_AROMAZONE_URL);
+
+                    // Extract out the value from the Cursor for the given column index
+                    String nameHv = cursor.getString(nameHvColumnIndex);
+                    String imageUriHvString = cursor.getString(pictureHvColumnIndex);
+                    String densityHv = cursor.getString(densityHvColumnIndex);
+                    String quantityGramHv = cursor.getString(quantityGramHvColumnIndex);
+                    String quantityMlHv = cursor.getString(quantityMlHvColumnIndex);
+                    String aromazoneWebsiteHv = cursor.getString(aromazoneUrlHvColumnIndex);
+
+                    // Update the views on the screen with the values from the database
+                    mNameEditText.setText(nameHv);
+                    mImageUri = Uri.parse(imageUriHvString);
+                    mPictureImageView.setImageURI(mImageUri);
+                    mDensityEditText.setText(densityHv);
+                    mQuantityGramEditText.setText(quantityGramHv);
+                    mQuantityMlEditText.setText(quantityMlHv);
+                    mAromazoneUrlEditText.setText(aromazoneWebsiteHv);
+                    break;
+
+                case 2:
+                    // Find the columns of plant attributes that we're interested in
+                    int nameHeColumnIndex = cursor.getColumnIndex(HeEntry.COLUMN_HE_NAME);
+                    int pictureHeColumnIndex = cursor.getColumnIndex(HeEntry.COLUMN_HE_PICTURE);
+                    int densityHeColumnIndex = cursor.getColumnIndex(HeEntry.COLUMN_HE_DENSITY);
+                    int quantityGramHeColumnIndex = cursor.getColumnIndex(HeEntry.COLUMN_HE_QUANTITY_GRAM);
+                    int quantityMlHeColumnIndex = cursor.getColumnIndex(HeEntry.COLUMN_HE_QUANTITY_ML);
+                    int aromazoneUrlHeColumnIndex = cursor.getColumnIndex(HeEntry.COLUMN_HE_AROMAZONE_URL);
+
+                    // Extract out the value from the Cursor for the given column index
+                    String nameHe = cursor.getString(nameHeColumnIndex);
+                    String imageUriHeString = cursor.getString(pictureHeColumnIndex);
+                    String densityHe = cursor.getString(densityHeColumnIndex);
+                    String quantityGramHe = cursor.getString(quantityGramHeColumnIndex);
+                    String quantityMlHe = cursor.getString(quantityMlHeColumnIndex);
+                    String aromazoneWebsiteHe = cursor.getString(aromazoneUrlHeColumnIndex);
+
+                    // Update the views on the screen with the values from the database
+                    mNameEditText.setText(nameHe);
+                    mImageUri = Uri.parse(imageUriHeString);
+                    mPictureImageView.setImageURI(mImageUri);
+                    mDensityEditText.setText(densityHe);
+                    mQuantityGramEditText.setText(quantityGramHe);
+                    mQuantityMlEditText.setText(quantityMlHe);
+                    mAromazoneUrlEditText.setText(aromazoneWebsiteHe);
+                    break;
+
+                case 3:
+                    // Find the columns of plant attributes that we're interested in
+                    int nameExtrColumnIndex = cursor.getColumnIndex(ExtrEntry.COLUMN_EXTR_NAME);
+                    int pictureExtrColumnIndex = cursor.getColumnIndex(ExtrEntry.COLUMN_EXTR_PICTURE);
+                    int densityExtrColumnIndex = cursor.getColumnIndex(ExtrEntry.COLUMN_EXTR_DENSITY);
+                    int quantityGramExtrColumnIndex = cursor.getColumnIndex(ExtrEntry.COLUMN_EXTR_QUANTITY_GRAM);
+                    int quantityMlExtrColumnIndex = cursor.getColumnIndex(ExtrEntry.COLUMN_EXTR_QUANTITY_ML);
+                    int aromazoneUrlExtrColumnIndex = cursor.getColumnIndex(ExtrEntry.COLUMN_EXTR_AROMAZONE_URL);
+
+                    // Extract out the value from the Cursor for the given column index
+                    String nameExtr = cursor.getString(nameExtrColumnIndex);
+                    String imageUriExtrString = cursor.getString(pictureExtrColumnIndex);
+                    String densityExtr = cursor.getString(densityExtrColumnIndex);
+                    String quantityGramExtr = cursor.getString(quantityGramExtrColumnIndex);
+                    String quantityMlExtr = cursor.getString(quantityMlExtrColumnIndex);
+                    String aromazoneWebsiteExtr = cursor.getString(aromazoneUrlExtrColumnIndex);
+
+                    // Update the views on the screen with the values from the database
+                    mNameEditText.setText(nameExtr);
+                    mImageUri = Uri.parse(imageUriExtrString);
+                    mPictureImageView.setImageURI(mImageUri);
+                    mDensityEditText.setText(densityExtr);
+                    mQuantityGramEditText.setText(quantityGramExtr);
+                    mQuantityMlEditText.setText(quantityMlExtr);
+                    mAromazoneUrlEditText.setText(aromazoneWebsiteExtr);
+                    break;
+
+                case 4:
+                    // Find the columns of plant attributes that we're interested in
+                    int namePoudrColumnIndex = cursor.getColumnIndex(PoudrEntry.COLUMN_POUDR_NAME);
+                    int picturePoudrColumnIndex = cursor.getColumnIndex(PoudrEntry.COLUMN_POUDR_PICTURE);
+                    int densityPoudrColumnIndex = cursor.getColumnIndex(PoudrEntry.COLUMN_POUDR_DENSITY);
+                    int quantityGramPoudrColumnIndex = cursor.getColumnIndex(PoudrEntry.COLUMN_POUDR_QUANTITY_GRAM);
+                    int quantityMlPoudrColumnIndex = cursor.getColumnIndex(PoudrEntry.COLUMN_POUDR_QUANTITY_ML);
+                    int aromazoneUrlPoudrColumnIndex = cursor.getColumnIndex(PoudrEntry.COLUMN_POUDR_AROMAZONE_URL);
+
+                    // Extract out the value from the Cursor for the given column index
+                    String namePoudr = cursor.getString(namePoudrColumnIndex);
+                    String imageUriPoudrString = cursor.getString(picturePoudrColumnIndex);
+                    String densityPoudr = cursor.getString(densityPoudrColumnIndex);
+                    String quantityGramPoudr = cursor.getString(quantityGramPoudrColumnIndex);
+                    String quantityMlPoudr = cursor.getString(quantityMlPoudrColumnIndex);
+                    String aromazoneWebsitePoudr = cursor.getString(aromazoneUrlPoudrColumnIndex);
+
+                    // Update the views on the screen with the values from the database
+                    mNameEditText.setText(namePoudr);
+                    mImageUri = Uri.parse(imageUriPoudrString);
+                    mPictureImageView.setImageURI(mImageUri);
+                    mDensityEditText.setText(densityPoudr);
+                    mQuantityGramEditText.setText(quantityGramPoudr);
+                    mQuantityMlEditText.setText(quantityMlPoudr);
+                    mAromazoneUrlEditText.setText(aromazoneWebsitePoudr);
+                    break;
+
+                case 5:
+                    // Find the columns of plant attributes that we're interested in
+                    int nameActifColumnIndex = cursor.getColumnIndex(ActifEntry.COLUMN_ACTIF_NAME);
+                    int pictureActifColumnIndex = cursor.getColumnIndex(ActifEntry.COLUMN_ACTIF_PICTURE);
+                    int densityActifColumnIndex = cursor.getColumnIndex(ActifEntry.COLUMN_ACTIF_DENSITY);
+                    int quantityGramActifColumnIndex = cursor.getColumnIndex(ActifEntry.COLUMN_ACTIF_QUANTITY_GRAM);
+                    int quantityMlActifColumnIndex = cursor.getColumnIndex(ActifEntry.COLUMN_ACTIF_QUANTITY_ML);
+                    int aromazoneUrlActifColumnIndex = cursor.getColumnIndex(ActifEntry.COLUMN_ACTIF_AROMAZONE_URL);
+
+                    // Extract out the value from the Cursor for the given column index
+                    String nameActif = cursor.getString(nameActifColumnIndex);
+                    String imageUriActifString = cursor.getString(pictureActifColumnIndex);
+                    String densityActif = cursor.getString(densityActifColumnIndex);
+                    String quantityGramActif = cursor.getString(quantityGramActifColumnIndex);
+                    String quantityMlActif = cursor.getString(quantityMlActifColumnIndex);
+                    String aromazoneWebsiteActif = cursor.getString(aromazoneUrlActifColumnIndex);
+
+                    // Update the views on the screen with the values from the database
+                    mNameEditText.setText(nameActif);
+                    mImageUri = Uri.parse(imageUriActifString);
+                    mPictureImageView.setImageURI(mImageUri);
+                    mDensityEditText.setText(densityActif);
+                    mQuantityGramEditText.setText(quantityGramActif);
+                    mQuantityMlEditText.setText(quantityMlActif);
+                    mAromazoneUrlEditText.setText(aromazoneWebsiteActif);
+
+                case 6:
+                    // Find the columns of plant attributes that we're interested in
+                    int nameDiversColumnIndex = cursor.getColumnIndex(DiversEntry.COLUMN_DIVERS_NAME);
+                    int pictureDiversColumnIndex = cursor.getColumnIndex(DiversEntry.COLUMN_DIVERS_PICTURE);
+                    int densityDiversColumnIndex = cursor.getColumnIndex(DiversEntry.COLUMN_DIVERS_DENSITY);
+                    int quantityGramDiversColumnIndex = cursor.getColumnIndex(DiversEntry.COLUMN_DIVERS_QUANTITY_GRAM);
+                    int quantityMlDiversColumnIndex = cursor.getColumnIndex(DiversEntry.COLUMN_DIVERS_QUANTITY_ML);
+                    int aromazoneUrlDiversColumnIndex = cursor.getColumnIndex(DiversEntry.COLUMN_DIVERS_AROMAZONE_URL);
+
+                    // Extract out the value from the Cursor for the given column index
+                    String nameDivers = cursor.getString(nameDiversColumnIndex);
+                    String imageUriDiversString = cursor.getString(pictureDiversColumnIndex);
+                    String densityDivers = cursor.getString(densityDiversColumnIndex);
+                    String quantityGramDivers = cursor.getString(quantityGramDiversColumnIndex);
+                    String quantityMlDivers = cursor.getString(quantityMlDiversColumnIndex);
+                    String aromazoneWebsiteDivers = cursor.getString(aromazoneUrlDiversColumnIndex);
+
+                    // Update the views on the screen with the values from the database
+                    mNameEditText.setText(nameDivers);
+                    mImageUri = Uri.parse(imageUriDiversString);
+                    mPictureImageView.setImageURI(mImageUri);
+                    mDensityEditText.setText(densityDivers);
+                    mQuantityGramEditText.setText(quantityGramDivers);
+                    mQuantityMlEditText.setText(quantityMlDivers);
+                    mAromazoneUrlEditText.setText(aromazoneWebsiteDivers);
+                    break;
+
+                case 7:
+                    // Find the columns of plant attributes that we're interested in
+                    int nameContenColumnIndex = cursor.getColumnIndex(ContenEntry.COLUMN_CONTEN_NAME);
+                    int pictureContenColumnIndex = cursor.getColumnIndex(ContenEntry.COLUMN_CONTEN_PICTURE);
+                    int quantityTotalContenColumnIndex = cursor.getColumnIndex(ContenEntry.COLUMN_CONTEN_QUANTITY_TOTAL);
+                    int quantityDispoContenColumnIndex = cursor.getColumnIndex(ContenEntry.COLUMN_CONTEN_QUANTITY_DISPO);
+                    int aromazoneUrlContenColumnIndex = cursor.getColumnIndex(ContenEntry.COLUMN_CONTEN_AROMAZONE_URL);
+
+                    // Extract out the value from the Cursor for the given column index
+                    String nameConten = cursor.getString(nameContenColumnIndex);
+                    String imageUriContenString = cursor.getString(pictureContenColumnIndex);
+                    String quantityTotalConten = cursor.getString(quantityTotalContenColumnIndex);
+                    String quantityDispoConten = cursor.getString(quantityDispoContenColumnIndex);
+                    String aromazoneWebsiteConten = cursor.getString(aromazoneUrlContenColumnIndex);
+
+                    // Update the views on the screen with the values from the database
+                    mNameEditText.setText(nameConten);
+                    mImageUri = Uri.parse(imageUriContenString);
+                    mPictureImageView.setImageURI(mImageUri);
+                    mQuantityTotalTextView.setText(quantityTotalConten);
+                    mQuantityTotal = Integer.parseInt(quantityTotalConten);
+                    mQuantityDispoTextView.setText(quantityDispoConten);
+                    mQuantityDispo = Integer.parseInt(quantityDispoConten);
+                    mAromazoneUrlEditText.setText(aromazoneWebsiteConten);
+                    break;
+            }
         }
     }
 
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
         // If the loader is invalidated, clear out all the data from the input fields.
-        mNameEditText.setText("");
-        mPriceEditText.setText("");
-        mSupplierInfoEditText.setText("");
-        mSupplierMailEditText.setText("");
-        mQuantityTextView.setText("");
+        if (mTableType == 7) {
+            mNameEditText.setText("");
+            mQuantityTotalTextView.setText("");
+            mQuantityDispoTextView.setText("");
+            mAromazoneUrlEditText.setText("");
+        } else {
+            mNameEditText.setText("");
+            mDensityEditText.setText("");
+            mQuantityGramEditText.setText("");
+            mQuantityMlEditText.setText("");
+            mAromazoneUrlEditText.setText("");
+        }
     }
 
     /**
@@ -651,24 +1783,50 @@ public class EditorActivity extends AppCompatActivity implements LoaderManager.L
     }
 
     // Method to increment the quantity when plus button clicked and display it
-    public void plusButtonClicked() {
-        mQuantity++;
-        displayQuantity();
+    public void plusTotalButtonClicked() {
+        mQuantityTotal++;
+        displayQuantityTotal();
     }
 
     // Method to decrement the quantity when plus button clicked and display it
     // Handle the case where the quantity is already at zero, prevent a negative value
-    public void minusButtonClicked() {
-        if (mQuantity == 0) {
+    public void minusTotalButtonClicked() {
+        if (mQuantityTotal == 0) {
             Toast.makeText(this, "Can't decrease quantity", Toast.LENGTH_SHORT).show();
         } else {
-            mQuantity--;
-            displayQuantity();
+            mQuantityTotal--;
+            displayQuantityTotal();
         }
     }
 
     // Method to display the quantity in the given textView
-    public void displayQuantity() {
-        mQuantityTextView.setText(String.valueOf(mQuantity));
+    public void displayQuantityTotal() {
+        mQuantityTotalTextView.setText(String.valueOf(mQuantityTotal));
+    }
+
+    // Method to increment the quantity when plus button clicked and display it
+    public void plusDispoButtonClicked() {
+        if (mQuantityDispo == mQuantityTotal) {
+            Toast.makeText(this, "Can't have more Dispo than Total", Toast.LENGTH_SHORT).show();
+        } else {
+            mQuantityDispo++;
+            displayQuantityDispo();
+        }
+    }
+
+    // Method to decrement the quantity when plus button clicked and display it
+    // Handle the case where the quantity is already at zero, prevent a negative value
+    public void minusDispoButtonClicked() {
+        if (mQuantityDispo == 0) {
+            Toast.makeText(this, "Can't decrease quantity", Toast.LENGTH_SHORT).show();
+        } else {
+            mQuantityDispo--;
+            displayQuantityDispo();
+        }
+    }
+
+    // Method to display the quantity in the given textView
+    public void displayQuantityDispo() {
+        mQuantityDispoTextView.setText(String.valueOf(mQuantityDispo));
     }
 }

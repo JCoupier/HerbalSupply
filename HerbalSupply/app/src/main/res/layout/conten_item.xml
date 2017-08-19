@@ -18,7 +18,7 @@
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="2"
+        android:layout_weight="1"
         android:gravity="center_vertical"
         android:orientation="vertical">
 
@@ -45,7 +45,14 @@
             android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/quantity_gram"
+                style="@style/ListItemQuantity"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="@dimen/activity_padding"
+                android:text="@string/total" />
+
+            <TextView
+                android:id="@+id/quantity_total"
                 style="@style/ListItemQuantity"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -53,13 +60,6 @@
                 android:paddingBottom="@dimen/activity_padding"
                 android:paddingTop="@dimen/activity_padding"
                 tools:text="9.99" />
-
-            <TextView
-                style="@style/ListItemQuantity"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:padding="@dimen/activity_padding"
-                android:text="@string/unit_g" />
 
         </LinearLayout>
 
@@ -70,7 +70,14 @@
             android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/quantity_ml"
+                style="@style/ListItemQuantity"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="@dimen/activity_padding"
+                android:text="Dispo :" />
+
+            <TextView
+                android:id="@+id/quantity_dispo"
                 style="@style/ListItemQuantity"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -78,13 +85,6 @@
                 android:paddingBottom="@dimen/activity_padding"
                 android:paddingTop="@dimen/activity_padding"
                 tools:text="9.99" />
-
-            <TextView
-                style="@style/ListItemQuantity"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:padding="@dimen/activity_padding"
-                android:text="@string/unit_ml" />
 
         </LinearLayout>
 
